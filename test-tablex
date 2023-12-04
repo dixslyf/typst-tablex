@@ -1,0 +1,51 @@
+#!/bin/sh
+
+PROJECT_ROOT=$(git rev-parse --show-toplevel)
+
+TEST_FILE="$PROJECT_ROOT/tablex-test.typ"
+
+TESTS_DIR="$PROJECT_ROOT/tests"
+TYPST_VERSION=$(typst --version)
+TYPST_VERSION_TESTS_DIR="$TESTS_DIR/$TYPST_VERSION"
+
+REF_OUTPUT_FILE="$TYPST_VERSION_TESTS_DIR/ref.pdf"
+RES_OUTPUT_FILE="$TYPST_VERSION_TESTS_DIR/res.pdf"
+DIFF_OUTPUT_FILE="$TYPST_VERSION_TESTS_DIR/diff.pdf"
+
+COMMAND="$1"
+
+update() {
+    mkdir -p "$TYPST_VERSION_TESTS_DIR"
+    typst compile "$TEST_FILE" "$REF_OUTPUT_FILE"
+    echo "Updated reference output for $TYPST_VERSION"
+}
+
+compare() {
+    echo "Comparing reference and result for $TYPST_VERSION"
+    [ ! -f "$REF_OUTPUT_FILE" ] && echo "No previous output to compare to"
+    typst compile "$TEST_FILE" "$RES_OUTPUT_FILE"
+    diff-pdf "$REF_OUTPUT_FILE" "$RES_OUTPUT_FILE" --output-diff="$DIFF_OUTPUT_FILE"
+
+    DIFF_RET="$?"
+
+    if [ "$DIFF_RET" -ne 0 ]; then
+        echo "Reference and result are different"
+    else
+        echo "Reference and result are the same"
+    fi
+}
+
+case "$COMMAND" in
+    update)
+        update
+        ;;
+    compare)
+        compare
+        ;;
+    "")
+        echo "No command provided"
+        ;;
+    *)
+        echo "Unknown command: $COMMAND"
+        ;;
+esac
